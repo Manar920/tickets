@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "841651611010",
+    "project_id": "tikets-1283e",
+    "storage_bucket": "tikets-1283e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841651611010:android:2eada64ca3cb6d71e5db9b",
+        "android_client_info": {
+          "package_name": "com.example.tickets"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxrXtgAmRBuQjO75rnQbdWE-liu55KfbI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

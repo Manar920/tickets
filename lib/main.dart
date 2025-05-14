@@ -14,6 +14,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Add logging to help debug
+  print("App starting with Firebase initialized");
+  
   runApp(const MyApp());
 }
 
@@ -26,6 +30,8 @@ class MyApp extends StatelessWidget {
       create: (_) => AuthProvider(),
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
+          print("Auth state changed: isAuthenticated=${authProvider.isAuthenticated}, role=${authProvider.role}");
+          
           return authProvider.isAuthenticated
               ? ChangeNotifierProvider<TicketProvider>(
                   // Create a new TicketProvider when user is authenticated

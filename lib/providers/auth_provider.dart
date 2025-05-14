@@ -37,150 +37,155 @@ class AuthProvider with ChangeNotifier {
     _initCurrentUser();
   }
   
-  // Initialize the current user on startup
+  // Improved sign in with better error handling and prevention of auto-logout
+  Future<bool> signIn(String email, String password) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    // Store current auth state to detect changes
+    final wasAuthenticated = _user != null;
+
+    try {
+      // Only log success/failure without the full error message
+      final success = await _authService.signInWithEmailAndPassword(email, password);
+      
+      if (success) {
+        // Safely get user info after sign-in
+        await Future.delayed(const Duration(milliseconds: 500));
+        _user = await _authService.getCurrentUser();
+        
+        if (_user != null) {
+          _role = await _roleService.getUserRole(_user!.uid);
+          print('Sign in successful and user data loaded. Role: $_role');
+        } else {
+          print('Warning: User signed in but getCurrentUser returned null');
+        }
+      } else {
+        _error = 'Login failed. Please check your credentials.';
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return success && _user != null;
+    } catch (e) {
+      _isLoading = false;
+      // Ignore PigeonUserDetails errors completely
+      if (e.toString().contains('PigeonUserDetails')) {
+        // If we get this error, check if we're actually signed in
+        final signedIn = _authService.currentUser != null;
+        
+        if (!signedIn) {
+          _error = 'Login failed. Please check your credentials.';
+        }
+        
+        notifyListeners();
+        return signedIn;
+      } else {
+        _error = 'An unexpected error occurred during sign in.';
+        notifyListeners();
+        return false;
+      }
+    }
+  }
+  
+  // Initialize the current user on startup - with logging
   Future<void> _initCurrentUser() async {
     try {
+      final UserModel? previousUser = _user;
       _user = await _authService.getCurrentUser();
+      
       if (_user != null) {
         _role = await _roleService.getUserRole(_user!.uid);
+        print('User initialized: ${_user!.email}, role: $_role');
+      } else if (previousUser != null) {
+        print('Warning: _initCurrentUser cleared an existing user');
       }
+      
       notifyListeners();
     } catch (e) {
       print('Error initializing current user: $e');
     }
   }
 
-  // Sign in with email and password
-  Future<bool> signIn(String email, String password) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      _user = await _authService.signInWithEmailAndPassword(email, password);
-      if (_user != null) {
-        _role = await _roleService.getUserRole(_user!.uid);
-      }
-      _isLoading = false;
-      notifyListeners();
-      return _user != null;
-    } on FirebaseAuthException catch (e) {
-      _isLoading = false;
-      // Handle specific Firebase Auth error messages
-      switch (e.code) {
-        case 'user-not-found':
-          _error = 'No user found with this email.';
-          break;
-        case 'wrong-password':
-          _error = 'Wrong password provided.';
-          break;
-        case 'invalid-email':
-          _error = 'Invalid email format.';
-          break;
-        case 'user-disabled':
-          _error = 'This user has been disabled.';
-          break;
-        case 'too-many-requests':
-          _error = 'Too many attempts. Try again later.';
-          break;
-        default:
-          _error = 'Authentication error: ${e.message}';
-      }
-      notifyListeners();
-      return false;
-    } catch (e) {
-      _isLoading = false;
-      _error = e.toString();
-      
-      if (e.toString().contains('PigeonUserDetails')) {
-        _user = await _authService.getCurrentUser();
-        if (_user != null) {
-          _role = await _roleService.getUserRole(_user!.uid);
-          _error = null;
-          notifyListeners();
-          return true;
-        }
-      }
-      
-      notifyListeners();
-      return false;
-    }
-  }
-
   // Register with email and password with better error handling
-  Future<bool> register(String email, String password, {String name = '', String role = 'client'}) async {
+  Future<bool> register(String email, String password, {String name = ''}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
     try {
-      // Wait for the registration to complete with name
-      _user = await _authService.registerWithEmailAndPassword(
-        email, 
-        password, 
-        name: name,
-        role: role
-      );
-      
-      // Explicitly wait a moment to ensure Firestore operation completes
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      if (_user != null) {
-        _role = role;
-      }
+      // Register user with email and password
+      final success = await _authService.registerWithEmailAndPassword(email, password, name: name);
+      // The AuthService should handle creating the Firestore user document and setting displayName
       _isLoading = false;
       notifyListeners();
-      return _user != null;
+      return success;
     } on FirebaseAuthException catch (e) {
-      _isLoading = false;
-      // Handle specific Firebase Auth error messages
-      switch (e.code) {
-        case 'email-already-in-use':
-          _error = 'Email is already in use.';
-          break;
-        case 'weak-password':
-          _error = 'Password is too weak.';
-          break;
-        case 'invalid-email':
-          _error = 'Invalid email format.';
-          break;
-        case 'operation-not-allowed':
-          _error = 'Email/password accounts are not enabled.';
-          break;
-        default:
-          _error = 'Registration error: ${e.message}';
-      }
-      notifyListeners();
+      _handleAuthError(e);
       return false;
     } catch (e) {
       _isLoading = false;
-      _error = e.toString();
-      print('Registration general error: $e');
+      _error = 'An unexpected error occurred during registration.';
       notifyListeners();
       return false;
     }
   }
 
-  // Sign out
+  // Sign out - prevent accidental sign-outs
   Future<void> signOut() async {
     try {
-      // First set user to null before calling Firebase signOut
+      print('Explicitly signing out user: ${_user?.email}');
+      
+      // Set state variables to null AFTER Firebase sign-out
+      await _authService.signOut();
+      
       _user = null;
       _role = null;
       notifyListeners();
-      
-      // Then sign out from Firebase
-      await _authService.signOut();
     } catch (e) {
       _error = 'Failed to sign out: $e';
       print('Sign out error: $e');
-      // Don't notify listeners here - might be after disposal
     }
   }
 
   // Clear any errors
   void clearError() {
     _error = null;
+    notifyListeners();
+  }
+
+  // Handle Firebase Auth specific errors
+  void _handleAuthError(FirebaseAuthException e) {
+    _isLoading = false;
+    // Handle specific Firebase Auth error messages
+    switch (e.code) {
+      case 'user-not-found':
+        _error = 'No user found with this email.';
+        break;
+      case 'wrong-password':
+        _error = 'Wrong password provided.';
+        break;
+      case 'invalid-email':
+        _error = 'Invalid email format.';
+        break;
+      case 'user-disabled':
+        _error = 'This user has been disabled.';
+        break;
+      case 'too-many-requests':
+        _error = 'Too many attempts. Try again later.';
+        break;
+      case 'email-already-in-use':
+        _error = 'Email is already in use.';
+        break;
+      case 'weak-password':
+        _error = 'Password is too weak.';
+        break;
+      case 'operation-not-allowed':
+        _error = 'Email/password accounts are not enabled.';
+        break;
+      default:
+        _error = 'Authentication error: ${e.message}';
+    }
     notifyListeners();
   }
 }

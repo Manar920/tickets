@@ -5,6 +5,9 @@ import '../models/user_model.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Add this getter to access the current user
+  User? get currentUser => _auth.currentUser;
 
   // Convert Firebase User to our custom User model
   Future<UserModel?> _userFromFirebaseUser(User? user) async {
@@ -45,76 +48,107 @@ class AuthService {
     return _auth.authStateChanges().asyncMap(_userFromFirebaseUser);
   }
 
-  // Get current user
+  // Get current user as UserModel
   Future<UserModel?> getCurrentUser() async {
-    return await _userFromFirebaseUser(_auth.currentUser);
+    final User? firebaseUser = _auth.currentUser;
+    if (firebaseUser == null) {
+      return null;
+    }
+
+    try {
+      // Get additional user data from Firestore
+      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      if (doc.exists && doc.data() != null) {
+        // Use the data from Firestore to create the UserModel
+        return UserModel.fromMap(doc.data()!, firebaseUser.uid);
+      } else {
+        // Firestore doc doesn't exist yet, create basic model
+        return UserModel(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+          name: firebaseUser.displayName ?? '',
+          role: 'client', // Default role
+          photoURL: firebaseUser.photoURL,
+        );
+      }
+    } catch (e) {
+      print('Error getting user data: $e');
+      // Return a basic model on error
+      return UserModel(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email ?? '',
+        name: firebaseUser.displayName ?? '',
+        role: 'client',
+        photoURL: firebaseUser.photoURL,
+      );
+    }
   }
 
-  // Sign in with email and password
-  Future<UserModel?> signInWithEmailAndPassword(
-      String email, String password) async {
+  // Simplified sign-in method to focus on authentication success
+  Future<bool> signInWithEmailAndPassword(String email, String password) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-          email: email, password: password);
-      User? user = result.user;
-      return await _userFromFirebaseUser(user);
-    } on FirebaseAuthException catch (e) {
-      print('Firebase Auth Exception: ${e.code} - ${e.message}');
-      rethrow;
-    } catch (e) {
-      if (e.toString().contains('PigeonUserDetails')) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        final currentUser = _auth.currentUser;
-        if (currentUser != null) {
-          return await _userFromFirebaseUser(currentUser);
+      // Clear any previous auth errors first
+      try {
+        // Use the standard sign-in method
+        final UserCredential result = await _auth.signInWithEmailAndPassword(
+          email: email.trim(), 
+          password: password
+        );
+        
+        // If we get a user back, auth was successful
+        return result.user != null;
+      } catch (e) {
+        // Catch the specific PigeonUserDetails error but consider auth successful
+        // if there's a current user
+        if (e.toString().contains('PigeonUserDetails')) {
+          print('Ignoring known PigeonUserDetails error');
+          
+          // Give Firebase a moment to update the auth state
+          await Future.delayed(const Duration(milliseconds: 300));
+          
+          // Simply check if there's a current user
+          return _auth.currentUser != null;
         }
+        // For other errors, re-throw so they're properly handled
+        rethrow;
       }
-      print('Error signing in: $e');
-      throw Exception('Authentication failed. Please try again.');
+    } catch (e) {
+      print('Sign in error: $e');
+      return false;
     }
   }
 
   // Register with email and password
-  Future<UserModel?> registerWithEmailAndPassword(
-      String email, String password, {String? name, String role = 'client'}) async {
+  Future<bool> registerWithEmailAndPassword(
+      String email, String password, {String name = ''}) async {
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-          email: email, password: password);
-      User? user = result.user;
+      // Create the user
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       
-      if (user != null) {
-        UserModel newUser = UserModel(
-          uid: user.uid,
-          email: user.email ?? '',
-          name: name ?? '', // Can be null
-          photoURL: user.photoURL,
-          role: role,
-        );
-        
-        // Save user to Firestore
-        await _firestore.collection('users').doc(user.uid).set(newUser.toMap());
-        
-        // Update user display name in Firebase Auth if name is provided
-        if (name != null && name.isNotEmpty) {
-          await user.updateDisplayName(name);
+      if (userCredential.user != null) {
+        // Update display name if provided
+        if (name.isNotEmpty) {
+          await userCredential.user!.updateDisplayName(name);
         }
         
-        return newUser;
+        // Create user document in Firestore
+        await _firestore.collection('users').doc(userCredential.user!.uid).set({
+          'uid': userCredential.user!.uid,
+          'email': email,
+          'name': name.isNotEmpty ? name : email.split('@')[0],
+          'role': 'client', // Default role
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        
+        return true;
       }
-      return null;
-    } on FirebaseAuthException catch (e) {
-      print('Firebase Auth Exception: ${e.code} - ${e.message}');
-      rethrow;
+      return false;
     } catch (e) {
-      if (e.toString().contains('PigeonUserDetails')) {
-        await Future.delayed(const Duration(milliseconds: 500));
-        final currentUser = _auth.currentUser;
-        if (currentUser != null) {
-          return await _userFromFirebaseUser(currentUser);
-        }
-      }
-      print('Error registering: $e');
-      throw Exception('Registration failed. Please try again.');
+      print('Registration error: $e');
+      rethrow; // Rethrow so the provider can handle specific Firebase errors
     }
   }
 

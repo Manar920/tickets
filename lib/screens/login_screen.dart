@@ -68,8 +68,24 @@ class LoginScreen extends StatelessWidget {
                   isLogin: true,
                   onSubmit: (email, password, {String? name}) async {
                     final success = await authProvider.signIn(email, password);
+                    
                     if (success && context.mounted) {
-                      // Navigation will be handled by the main.dart route builder
+                      print("SUCCESS: Navigating after successful login");
+                      
+                      // Add a delay to ensure auth state has time to propagate
+                      await Future.delayed(const Duration(milliseconds: 500));
+                      
+                      // Check auth state again after delay
+                      if (authProvider.isAuthenticated && context.mounted) {
+                        // Force navigation to appropriate screen based on role
+                        if (authProvider.isAdmin) {
+                          Navigator.pushReplacementNamed(context, '/admin_home');
+                        } else {
+                          Navigator.pushReplacementNamed(context, '/client_home');
+                        }
+                      } else {
+                        print("Warning: User authenticated but isAuthenticated=false");
+                      }
                     }
                   },
                 ),

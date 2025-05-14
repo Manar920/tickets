@@ -2,25 +2,52 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/role_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
+  final RoleService _roleService = RoleService();
   UserModel? _user;
+  String? _role;
   bool _isLoading = false;
   String? _error;
 
   // Getters
   UserModel? get user => _user;
+  String? get role => _role;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _user != null;
+  bool get isAdmin => _role == 'admin';
+  bool get isClient => _role == 'client';
 
   AuthProvider() {
     // Initialize the provider by listening to auth changes
-    _authService.user.listen((UserModel? user) {
+    _authService.user.listen((UserModel? user) async {
       _user = user;
+      if (user != null) {
+        _role = await _roleService.getUserRole(user.uid);
+      } else {
+        _role = null;
+      }
       notifyListeners();
     });
+    
+    // Initialize current user on startup
+    _initCurrentUser();
+  }
+  
+  // Initialize the current user on startup
+  Future<void> _initCurrentUser() async {
+    try {
+      _user = await _authService.getCurrentUser();
+      if (_user != null) {
+        _role = await _roleService.getUserRole(_user!.uid);
+      }
+      notifyListeners();
+    } catch (e) {
+      print('Error initializing current user: $e');
+    }
   }
 
   // Sign in with email and password
@@ -31,6 +58,9 @@ class AuthProvider with ChangeNotifier {
 
     try {
       _user = await _authService.signInWithEmailAndPassword(email, password);
+      if (_user != null) {
+        _role = await _roleService.getUserRole(_user!.uid);
+      }
       _isLoading = false;
       notifyListeners();
       return _user != null;
@@ -62,16 +92,14 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       _error = e.toString();
       
-      // If the error contains PigeonUserDetails, check auth state
       if (e.toString().contains('PigeonUserDetails')) {
-        final currentUser = _authService.currentUser;
-        if (currentUser != null) {
-          _user = currentUser;
+        _user = await _authService.getCurrentUser();
+        if (_user != null) {
+          _role = await _roleService.getUserRole(_user!.uid);
           _error = null;
           notifyListeners();
           return true;
         }
-        _error = 'Authentication failed. Please try again.';
       }
       
       notifyListeners();
@@ -79,14 +107,27 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Register with email and password
-  Future<bool> register(String email, String password) async {
+  // Register with email and password with better error handling
+  Future<bool> register(String email, String password, {String name = '', String role = 'client'}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      _user = await _authService.registerWithEmailAndPassword(email, password);
+      // Wait for the registration to complete with name
+      _user = await _authService.registerWithEmailAndPassword(
+        email, 
+        password, 
+        name: name,
+        role: role
+      );
+      
+      // Explicitly wait a moment to ensure Firestore operation completes
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (_user != null) {
+        _role = role;
+      }
       _isLoading = false;
       notifyListeners();
       return _user != null;
@@ -114,19 +155,7 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _error = e.toString();
-      
-      // Same workaround for registration
-      if (e.toString().contains('PigeonUserDetails')) {
-        final currentUser = _authService.currentUser;
-        if (currentUser != null) {
-          _user = currentUser;
-          _error = null;
-          notifyListeners();
-          return true;
-        }
-        _error = 'Registration failed. Please try again.';
-      }
-      
+      print('Registration general error: $e');
       notifyListeners();
       return false;
     }
@@ -135,12 +164,17 @@ class AuthProvider with ChangeNotifier {
   // Sign out
   Future<void> signOut() async {
     try {
-      await _authService.signOut();
+      // First set user to null before calling Firebase signOut
       _user = null;
+      _role = null;
       notifyListeners();
+      
+      // Then sign out from Firebase
+      await _authService.signOut();
     } catch (e) {
       _error = 'Failed to sign out: $e';
-      notifyListeners();
+      print('Sign out error: $e');
+      // Don't notify listeners here - might be after disposal
     }
   }
 

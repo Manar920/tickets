@@ -4,7 +4,7 @@ import '../providers/auth_provider.dart';
 
 class AuthForm extends StatefulWidget {
   final bool isLogin;
-  final Future<void> Function(String email, String password) onSubmit;
+  final Future<void> Function(String email, String password, {String? name}) onSubmit;
 
   const AuthForm({
     Key? key,
@@ -20,14 +20,23 @@ class _AuthFormState extends State<AuthForm> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _isPasswordVisible = false;
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      await widget.onSubmit(
-        _emailController.text.trim(),
-        _passwordController.text.trim(),
-      );
+      if (widget.isLogin) {
+        await widget.onSubmit(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+      } else {
+        await widget.onSubmit(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+          name: _nameController.text.trim(),
+        );
+      }
     }
   }
 
@@ -35,24 +44,55 @@ class _AuthFormState extends State<AuthForm> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final theme = Theme.of(context);
     
     return Form(
       key: _formKey,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (!widget.isLogin) ...[
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              child: TextFormField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(
+                    Icons.person_outline,
+                    color: theme.primaryColor.withOpacity(0.7),
+                  ),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  if (value.length < 3) {
+                    return 'Name must be at least 3 characters';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.email),
+            decoration: InputDecoration(
+              labelText: 'Email Address',
+              prefixIcon: Icon(
+                Icons.email_outlined,
+                color: theme.primaryColor.withOpacity(0.7),
+              ),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -70,13 +110,16 @@ class _AuthFormState extends State<AuthForm> {
             obscureText: !_isPasswordVisible,
             decoration: InputDecoration(
               labelText: 'Password',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock),
+              prefixIcon: Icon(
+                Icons.lock_outline,
+                color: theme.primaryColor.withOpacity(0.7),
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
                   _isPasswordVisible
-                      ? Icons.visibility
-                      : Icons.visibility_off,
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: theme.primaryColor.withOpacity(0.7),
                 ),
                 onPressed: () {
                   setState(() {
@@ -96,21 +139,70 @@ class _AuthFormState extends State<AuthForm> {
             },
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 56,
             child: ElevatedButton(
               onPressed: authProvider.isLoading ? null : _submitForm,
               style: ElevatedButton.styleFrom(
+                elevation: 3,
+                shadowColor: theme.primaryColor.withOpacity(0.4),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(30),
                 ),
               ),
               child: authProvider.isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(widget.isLogin ? 'Login' : 'Register'),
+                  ? const SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          widget.isLogin ? Icons.login : Icons.person_add,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          widget.isLogin ? 'Sign In' : 'Create Account',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
+          if (widget.isLogin) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  // TODO: Implement forgot password
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Forgot password functionality coming soon!'),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

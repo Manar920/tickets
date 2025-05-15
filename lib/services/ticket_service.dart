@@ -29,13 +29,12 @@ class TicketService {
               onTimeout: () => throw Exception('Initial ticket save timed out'));
       
       print('Ticket created with ID: ${docRef.id}');
-      
-      // Now process attachments directly instead of in background
+        // Now process attachments directly instead of in background
       if (attachments != null && attachments.isNotEmpty) {
         print('Processing ${attachments.length} attachments...');
         try {
           // Upload the files and wait for them to complete
-          final attachmentUrls = await _storageService.uploadFiles(attachments, userId)
+          final attachmentUrls = await _storageService.uploadFiles(attachments, 'tickets/$userId')
               .timeout(const Duration(seconds: 60), 
                   onTimeout: () {
                     print('Attachment upload timed out');

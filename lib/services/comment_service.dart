@@ -1,32 +1,45 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/comment_model.dart';
 import 'storage_service.dart';
 import 'role_service.dart';
 
 class CommentService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
   final StorageService _storageService = StorageService();
   final RoleService _roleService = RoleService();
   
-  // Collection references
-  CollectionReference get _commentsCollection => _firestore.collection('comments');
+  // Reference to comments node in the database
+  DatabaseReference get _commentsRef => _database.ref().child('comments');
   
   // Stream of comments for a specific ticket
   Stream<List<CommentModel>> getTicketComments(String ticketId) {
-    return _commentsCollection
-      .where('ticketId', isEqualTo: ticketId)
-      .orderBy('createdAt', descending: false)
-      .snapshots()
-      .map((snapshot) {
-        return snapshot.docs.map((doc) {
-          return CommentModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-        }).toList();
+    return _commentsRef
+      .orderByChild('ticketId')
+      .equalTo(ticketId)
+      .onValue
+      .map((event) {
+        final snapshot = event.snapshot;
+        if (snapshot.value == null) return [];
+        
+        final commentsMap = snapshot.value as Map<dynamic, dynamic>;
+        final commentsList = <CommentModel>[];
+        
+        commentsMap.forEach((key, value) {
+          // Convert each comment data to CommentModel
+          commentsList.add(CommentModel.fromMap(
+            Map<String, dynamic>.from(value as Map), 
+            key.toString(),
+          ));
+        });
+        
+        // Sort by createdAt timestamp (oldest first)
+        commentsList.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        return commentsList;
       });
   }
-  
-  // Add a new comment
+    // Add a new comment
   Future<String> addComment(CommentModel comment, List<File>? attachments) async {
     try {
       // If attachments provided, upload them first
@@ -54,27 +67,29 @@ class CommentService {
         attachmentUrls: attachmentUrls,
       );
       
-      // Save to Firestore
-      final docRef = await _commentsCollection.add(commentWithAttachments.toMap());
+      // Get a new key for the comment
+      final newCommentRef = _commentsRef.push();
       
-      return docRef.id;
+      // Save to Realtime Database
+      await newCommentRef.set(commentWithAttachments.toMap());
+      
+      return newCommentRef.key!;
     } catch (e) {
       print('Error adding comment: $e');
       throw Exception('Failed to add comment: $e');
     }
   }
-  
-  // Delete a comment (only if user is owner or admin)
+    // Delete a comment (only if user is owner or admin)
   Future<void> deleteComment(String commentId, String userId) async {
     try {
-      // Get the comment
-      final commentDoc = await _commentsCollection.doc(commentId).get();
+      // Get the comment data
+      final commentSnapshot = await _commentsRef.child(commentId).get();
       
-      if (!commentDoc.exists) {
+      if (!commentSnapshot.exists) {
         throw Exception('Comment not found');
       }
       
-      final commentData = commentDoc.data() as Map<String, dynamic>;
+      final commentData = Map<String, dynamic>.from(commentSnapshot.value as Map);
       
       // Check if user is owner or admin
       final isAdmin = await _roleService.isUserAdmin(userId);
@@ -88,15 +103,19 @@ class CommentService {
       final attachmentUrls = commentData['attachmentUrls'] as List<dynamic>? ?? [];
       for (var url in attachmentUrls) {
         try {
-          await _storageService.deleteFile(url.toString());
+          final success = await _storageService.deleteFile(url.toString());
+          if (!success) {
+            print('Warning: Could not delete attachment: $url');
+            // Continue with other deletions even if one fails
+          }
         } catch (e) {
           print('Error deleting attachment: $e');
           // Continue with other deletions even if one fails
         }
       }
       
-      // Delete comment document
-      await _commentsCollection.doc(commentId).delete();
+      // Delete comment from database
+      await _commentsRef.child(commentId).remove();
     } catch (e) {
       print('Error deleting comment: $e');
       throw Exception('Failed to delete comment: $e');

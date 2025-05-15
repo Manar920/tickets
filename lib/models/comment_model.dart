@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class CommentModel {
   final String? id;
@@ -21,7 +21,7 @@ class CommentModel {
     this.attachmentUrls = const [],
   });
 
-  // Create from Firestore map
+  // Create from Map for Realtime Database
   factory CommentModel.fromMap(Map<String, dynamic> data, String documentId) {
     // Handle attachment URLs
     List<String> attachments = [];
@@ -33,6 +33,25 @@ class CommentModel {
       }
     }
     
+    // Handle createdAt timestamp (could be stored as milliseconds since epoch)
+    DateTime createdAt;
+    if (data['createdAt'] is Map) {
+      // Handle Firestore Timestamp format if present
+      createdAt = DateTime.fromMillisecondsSinceEpoch(
+        (data['createdAt']['seconds'] * 1000) + 
+        ((data['createdAt']['nanoseconds'] ?? 0) ~/ 1000000));
+    } else if (data['createdAt'] is String) {
+      // Handle ISO8601 string format
+      createdAt = DateTime.parse(data['createdAt']);
+    } else if (data['createdAt'] is int) {
+      // Handle milliseconds since epoch integer
+      createdAt = DateTime.fromMillisecondsSinceEpoch(data['createdAt']);
+    } else {
+      // Default to now if format is unknown
+      createdAt = DateTime.now();
+      print('Warning: Unknown timestamp format for comment $documentId');
+    }
+    
     return CommentModel(
       id: documentId,
       ticketId: data['ticketId'] ?? '',
@@ -40,12 +59,11 @@ class CommentModel {
       userEmail: data['userEmail'] ?? '',
       userRole: data['userRole'] ?? 'client',
       message: data['message'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: createdAt,
       attachmentUrls: attachments,
     );
   }
-
-  // Convert to map for Firestore
+  // Convert to map for Realtime Database
   Map<String, dynamic> toMap() {
     return {
       'ticketId': ticketId,
@@ -53,7 +71,7 @@ class CommentModel {
       'userEmail': userEmail,
       'userRole': userRole,
       'message': message,
-      'createdAt': createdAt,
+      'createdAt': createdAt.millisecondsSinceEpoch, // Store as milliseconds since epoch
       'attachmentUrls': attachmentUrls,
     };
   }

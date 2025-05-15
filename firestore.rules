@@ -1,0 +1,63 @@
+// Allow read/write access to all users under certain conditions
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Authentication functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // User is accessing their own document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // General admin check
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Match all tickets
+    match /tickets/{ticketId} {
+      // Anyone signed in can read
+      // Only admins can create, update, or delete
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin() || 
+                              (isSignedIn() && resource.data.clientId == request.auth.uid);
+      
+      // Match comments for a specific ticket
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && (
+                                isAdmin() || 
+                                resource.data.userId == request.auth.uid
+                              );
+      }
+    }
+    
+    // Match all comments
+    match /comments/{commentId} {
+      // Allow anyone signed in to read comments
+      allow read: if isSignedIn();
+      
+      // Allow anyone signed in to create comments
+      allow create: if isSignedIn();
+      
+      // Only allow update/delete by admins or the comment owner
+      allow update, delete: if isSignedIn() && (
+                              isAdmin() || 
+                              resource.data.userId == request.auth.uid
+                            );
+    }
+    
+    // Users can read and write their own user data
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+  }
+}

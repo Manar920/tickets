@@ -10,6 +10,7 @@ import 'screens/client/client_home_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
 import 'screens/admin/admin_dashboard_screen.dart';
 import 'screens/ticket_list_screen.dart';
+import 'screens/create_ticket_screen.dart';
 import 'services/role_service.dart';
 
 void main() async {
@@ -106,6 +107,7 @@ class MyApp extends StatelessWidget {
                       '/admin_home': (context) => const AdminHomeScreen(),
                       '/admin_dashboard': (context) => const AdminDashboardScreen(),
                       '/tickets': (context) => const TicketListScreen(),
+                      '/create-ticket': (context) => const CreateTicketScreen(),
                     },
                   ),
                 )
@@ -167,6 +169,7 @@ class MyApp extends StatelessWidget {
                     '/admin_home': (context) => const AdminHomeScreen(),
                     '/admin_dashboard': (context) => const AdminDashboardScreen(),
                     '/tickets': (context) => const TicketListScreen(),
+                    '/create-ticket': (context) => const CreateTicketScreen(),
                   },
                 );
         },

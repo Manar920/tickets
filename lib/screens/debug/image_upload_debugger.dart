@@ -23,9 +23,8 @@ class _ImageUploadDebuggerState extends State<ImageUploadDebugger> {
       _resultUrl = null;
       _error = null;
     });
-    
-    try {
-      final url = await _storageService.uploadFile(file, userId);
+      try {
+      final url = await _storageService.uploadFile(file, 'debug/$userId');
       
       setState(() {
         _resultUrl = url;

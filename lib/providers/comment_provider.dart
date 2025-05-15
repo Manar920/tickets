@@ -22,13 +22,14 @@ class CommentProvider with ChangeNotifier {
   List<CommentModel> get comments => _comments;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  
-  // Set the current ticket ID and listen to comments
+    // Set the current ticket ID and listen to comments
   void setCurrentTicket(String ticketId) {
     if (ticketId == _currentTicketId) return;
     
     _currentTicketId = ticketId;
-    _loadComments();
+    
+    // Use Future.microtask to defer the loading until after the build is complete
+    Future.microtask(() => _loadComments());
   }
   
   // Load comments for the current ticket

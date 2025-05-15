@@ -148,17 +148,16 @@ class _TicketListScreenState extends State<TicketListScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
-              children: [
-                Text(
-                  'Showing ${filteredTickets.length} ${_selectedFilter == 'all' ? 'tickets' : _formatFilterName(_selectedFilter) + ' tickets'}',
+              children: [                Text(
+                  'Showing ${filteredTickets.length} ${_selectedStatusFilter == 'all' ? 'tickets' : _formatFilterName(_selectedStatusFilter) + ' tickets'}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
-                if (_selectedFilter != 'all')
+                if (_selectedStatusFilter != 'all')
                   Text(
-                    '${_getTicketCountByStatus(_selectedFilter, ticketProvider.tickets)} total',
+                    '${_getTicketCountByStatus(_selectedStatusFilter, ticketProvider.tickets)} total',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,
@@ -187,16 +186,124 @@ class _TicketListScreenState extends State<TicketListScreen> {
             ),
           ),
           
+          // Advanced filtering options
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Filters & Sorting',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 8),
+                
+                // Two-column layout for filter and sort options
+                Row(
+                  children: [
+                    // Priority Filter
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Priority',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(),
+                        ),
+                        value: _selectedPriorityFilter,
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All Priorities')),
+                          DropdownMenuItem(value: 'low', child: Text('Low')),
+                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                          DropdownMenuItem(value: 'high', child: Text('High')),
+                          DropdownMenuItem(value: 'critical', child: Text('Critical')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedPriorityFilter = value!;
+                          });
+                        },
+                      ),
+                    ),
+                    
+                    SizedBox(width: 8),
+                    
+                    // Sort Options
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Sort By',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          border: OutlineInputBorder(),
+                        ),
+                        value: _sortBy,
+                        items: const [
+                          DropdownMenuItem(value: 'date', child: Text('Date')),
+                          DropdownMenuItem(value: 'priority', child: Text('Priority')),
+                          DropdownMenuItem(value: 'status', child: Text('Status')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _sortBy = value!;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                
+                SizedBox(height: 8),
+                
+                // Sort direction toggle button
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _sortAscending = !_sortAscending;
+                        });
+                      },
+                      icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward),
+                      label: Text(_sortAscending ? 'Oldest First' : 'Newest First'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                    
+                    Spacer(),
+                    
+                    // Clear filters button
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _selectedStatusFilter = 'all';
+                          _selectedPriorityFilter = 'all';
+                          _sortBy = 'date';
+                          _sortAscending = false;
+                        });
+                      },
+                      icon: Icon(Icons.clear_all),
+                      label: Text('Clear Filters'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
           // Ticket list
           Expanded(
             child: ticketProvider.tickets.isEmpty
                 ? const Center(
                     child: Text('No tickets found'),
-                  )
-                : filteredTickets.isEmpty
+                  )                      : filteredTickets.isEmpty
                     ? Center(
-                        child: Text('No ${_formatFilterName(_selectedFilter)} tickets found'),
-                      )                    : RefreshIndicator(
+                        child: Text('No tickets match your filters'),
+                      ): RefreshIndicator(
                         onRefresh: () {
                           final provider = Provider.of<TicketProvider>(context, listen: false);
                           provider.refreshTickets();
@@ -260,9 +367,8 @@ class _TicketListScreenState extends State<TicketListScreen> {
       ),
     );
   }
-
   Widget _buildFilterChip(String filter, String label, [Color? color]) {
-    final isSelected = _selectedFilter == filter;
+    final isSelected = _selectedStatusFilter == filter;
     final chipColor = color ?? Colors.blue;
     
     return FilterChip(
@@ -270,7 +376,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
       label: Text(label),
       onSelected: (selected) {
         setState(() {
-          _selectedFilter = selected ? filter : 'all';
+          _selectedStatusFilter = selected ? filter : 'all';
         });
       },
       backgroundColor: chipColor.withOpacity(0.1),
@@ -290,32 +396,25 @@ class _TicketListScreenState extends State<TicketListScreen> {
     );
   }
 
+  // Build status count widget for summary card
   Widget _buildStatusCount(String label, int count, Color color) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
+        Text(
+          count.toString(),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
             color: color,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
+            fontSize: 12,
+            color: Colors.grey[600],
           ),
         ),
       ],
@@ -335,5 +434,27 @@ class _TicketListScreenState extends State<TicketListScreen> {
 
   int _getTicketCountByStatus(String status, List<TicketModel> tickets) {
     return tickets.where((ticket) => ticket.status == status).length;
+  }
+
+  // Helper function to convert priority to numeric value for sorting
+  int _getPriorityValue(String priority) {
+    switch (priority) {
+      case 'low': return 0;
+      case 'medium': return 1;
+      case 'high': return 2;
+      case 'critical': return 3;
+      default: return 0;
+    }
+  }
+  
+  // Helper function to convert status to numeric value for sorting
+  int _getStatusValue(String status) {
+    switch (status) {
+      case 'open': return 0;
+      case 'in_progress': return 1;
+      case 'resolved': return 2;
+      case 'closed': return 3;
+      default: return 0;
+    }
   }
 }

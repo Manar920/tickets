@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/ticket_provider.dart';
 import 'create_ticket_screen.dart';
-import 'ticket_detail_screen.dart';
+import '../ticket_detail_screen.dart';
 import '../../models/ticket_model.dart';
 import '../../widgets/ticket_list_item.dart';
+
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({Key? key}) : super(key: key);
@@ -81,10 +82,18 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
             onPressed: _navigateToLogin,
             tooltip: 'Logout',
           ),
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            onPressed: () {
+              Navigator.pushNamed(context, '/tickets');
+            },
+            tooltip: 'View All Tickets',
+          ),
         ],
       ),
       body: Column(
         children: [
+         
           // Welcome Card
           Container(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
@@ -280,9 +289,14 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             return TicketListItem(
                               ticket: ticket,
                               onTap: () {
-                                _navigateWithSafety(
+                                Navigator.push(
                                   context,
-                                  TicketDetailScreen(ticketId: ticket.id!),
+                                  MaterialPageRoute(
+                                    builder: (context) => TicketDetailScreen(
+                                      ticketId: ticket.id!,
+                                      isAdmin: false,
+                                    ),
+                                  ),
                                 );
                               },
                             );
@@ -327,6 +341,8 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
       floatingActionButton: _ticketProvider.tickets.isNotEmpty
           ? FloatingActionButton(
               onPressed: () {
+              
+                
                 _navigateWithSafety(
                   context,
                   const CreateTicketScreen(),

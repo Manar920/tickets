@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../models/ticket_model.dart';
 import '../services/ticket_service.dart';
 import '../services/role_service.dart';
+import '../services/storage_service.dart';
 
 class TicketProvider with ChangeNotifier {
   final TicketService _ticketService = TicketService();
@@ -102,20 +104,40 @@ class TicketProvider with ChangeNotifier {
     }
   }
   
-  // Create a new ticket with better error handling
-  Future<bool> createTicket(TicketModel ticket) async {
-    if (_disposed) return false;
-    
+  // Create a new ticket with attachments - Improved with better error handling
+  Future<String> createTicket(TicketModel ticket, List<File>? attachments) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
     try {
-      await _ticketService.createTicket(ticket);
-      return true;
-    } catch (e) {
-      if (!_disposed) {
-        _error = 'Error creating ticket: $e';
-        notifyListeners();
+      if (_userId == null) {
+        throw Exception('User ID is null');
       }
-      print('Create ticket error: $e');
-      return false;
+      
+      print('Starting ticket creation process...');
+      
+      // Set a timeout for the entire operation
+      final result = await Future.any([
+        _ticketService.createTicket(ticket, attachments, _userId!),
+        // Timeout after 25 seconds
+        Future.delayed(const Duration(seconds: 25)).then((_) => 
+          throw Exception('Ticket creation timed out. Please try again.'))
+      ]);
+      
+      print('Ticket created successfully with ID: $result');
+      
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      print('Error in ticket creation: $e');
+      _isLoading = false;
+      _error = 'Failed to create ticket: $e';
+      notifyListeners();
+      
+      // Re-throw with cleaner message
+      throw Exception('Could not save ticket: Check your internet connection and try again.');
     }
   }
   

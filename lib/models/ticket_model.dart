@@ -4,75 +4,96 @@ class TicketModel {
   final String? id;
   final String title;
   final String description;
-  final String status;
   final String priority;
+  final String status;
   final String clientId;
   final String? assignedToId;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final List<String> attachmentUrls; // Add this field
 
   TicketModel({
     this.id,
     required this.title,
     required this.description,
-    required this.status,
     required this.priority,
+    required this.status,
     required this.clientId,
     this.assignedToId,
     required this.createdAt,
     this.updatedAt,
+    this.attachmentUrls = const [], // Default to empty list
   });
 
-  factory TicketModel.fromMap(Map<String, dynamic> map, String docId) {
+  // Create from Firestore map
+  factory TicketModel.fromMap(Map<String, dynamic> data, String documentId) {
+    // Check if attachmentUrls is present and correctly parsed
+    List<String> attachments = [];
+    if (data['attachmentUrls'] != null) {
+      // Handle both array and list formats
+      if (data['attachmentUrls'] is List) {
+        attachments = List<String>.from(data['attachmentUrls']);
+      } else if (data['attachmentUrls'] is String) {
+        // If somehow stored as a single string
+        attachments = [data['attachmentUrls']];
+      }
+    }
+    
+    print('DEBUG: Loading ticket $documentId with attachments: $attachments');
+    
     return TicketModel(
-      id: docId,
-      title: map['title'] ?? '',
-      description: map['description'] ?? '',
-      status: map['status'] ?? 'open',
-      priority: map['priority'] ?? 'medium',
-      clientId: map['clientId'] ?? '',
-      assignedToId: map['assignedToId'],
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      updatedAt: map['updatedAt'] != null 
-          ? (map['updatedAt'] as Timestamp).toDate() 
-          : null,
+      id: documentId,
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      priority: data['priority'] ?? 'medium',
+      status: data['status'] ?? 'open',
+      clientId: data['clientId'] ?? '',
+      assignedToId: data['assignedToId'],
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : null,
+      attachmentUrls: attachments,
     );
   }
 
+  // Convert to map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'title': title,
       'description': description,
-      'status': status,
       'priority': priority,
+      'status': status,
       'clientId': clientId,
       'assignedToId': assignedToId,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      'attachmentUrls': attachmentUrls,
     };
   }
 
+  // Create a copy with some fields replaced
   TicketModel copyWith({
     String? id,
     String? title,
     String? description,
-    String? status,
     String? priority,
+    String? status,
     String? clientId,
     String? assignedToId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<String>? attachmentUrls,
   }) {
     return TicketModel(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      status: status ?? this.status,
       priority: priority ?? this.priority,
+      status: status ?? this.status,
       clientId: clientId ?? this.clientId,
       assignedToId: assignedToId ?? this.assignedToId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      attachmentUrls: attachmentUrls ?? this.attachmentUrls,
     );
   }
 }

@@ -4,19 +4,26 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/ticket_provider.dart';
+import 'providers/comment_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/client/client_home_screen.dart';
 import 'screens/admin/admin_home_screen.dart';
+import 'screens/admin/admin_dashboard_screen.dart';
+import 'screens/ticket_list_screen.dart';
 import 'services/role_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   
-  // Add logging to help debug
-  print("App starting with Firebase initialized");
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    print("Firebase initialized successfully");
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
   
   runApp(const MyApp());
 }
@@ -31,11 +38,16 @@ class MyApp extends StatelessWidget {
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
           print("Auth state changed: isAuthenticated=${authProvider.isAuthenticated}, role=${authProvider.role}");
-          
-          return authProvider.isAuthenticated
-              ? ChangeNotifierProvider<TicketProvider>(
-                  // Create a new TicketProvider when user is authenticated
-                  create: (_) => TicketProvider(authProvider.user?.uid),
+            return authProvider.isAuthenticated
+              ? MultiProvider(
+                  providers: [
+                    ChangeNotifierProvider<TicketProvider>(
+                      create: (_) => TicketProvider(authProvider.user?.uid),
+                    ),
+                    ChangeNotifierProvider<CommentProvider>(
+                      create: (_) => CommentProvider(),
+                    ),
+                  ],
                   child: MaterialApp(
                     title: 'DEVMOB SUPPORTCLIENT',
                     debugShowCheckedModeBanner: false,
@@ -87,12 +99,13 @@ class MyApp extends StatelessWidget {
                         color: Colors.white,
                         shadowColor: Colors.black.withOpacity(0.1),
                       ),
-                    ),
-                    home: _buildHomeScreen(authProvider),
+                    ),                    home: _buildHomeScreen(authProvider),
                     routes: {
                       '/login': (context) => const LoginScreen(),
                       '/client_home': (context) => const ClientHomeScreen(),
                       '/admin_home': (context) => const AdminHomeScreen(),
+                      '/admin_dashboard': (context) => const AdminDashboardScreen(),
+                      '/tickets': (context) => const TicketListScreen(),
                     },
                   ),
                 )
@@ -147,12 +160,13 @@ class MyApp extends StatelessWidget {
                       color: Colors.white,
                       shadowColor: Colors.black.withOpacity(0.1),
                     ),
-                  ),
-                  home: const LoginScreen(),
+                  ),                  home: const LoginScreen(),
                   routes: {
                     '/login': (context) => const LoginScreen(),
                     '/client_home': (context) => const ClientHomeScreen(),
                     '/admin_home': (context) => const AdminHomeScreen(),
+                    '/admin_dashboard': (context) => const AdminDashboardScreen(),
+                    '/tickets': (context) => const TicketListScreen(),
                   },
                 );
         },
@@ -176,11 +190,10 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-        
-        if (snapshot.hasData) {
+          if (snapshot.hasData) {
           final userRole = snapshot.data!;
           if (userRole == 'admin') {
-            return const AdminHomeScreen();
+            return const AdminDashboardScreen();
           } else {
             return const ClientHomeScreen();
           }

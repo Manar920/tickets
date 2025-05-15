@@ -1,17 +1,67 @@
+import 'dart:io'; // Import for File type
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/ticket_model.dart';
+import '../services/storage_service.dart';
+
 
 class TicketService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
-  // Create a new ticket
-  Future<String> createTicket(TicketModel ticket) async {
+  final StorageService _storageService = StorageService();
+    // Update createTicket to handle errors better
+  // Update to make attachments truly optional
+  Future<String> createTicket(TicketModel ticket, List<File>? attachments, String userId) async {
     try {
-      DocumentReference docRef = await _firestore.collection('tickets').add(ticket.toMap());
-      return docRef.id;
-    } catch (e) {
+      print('Creating ticket: ${ticket.title}');
+      
+      // Create a basic version of the ticket first (without attachments)
+      final initialTicket = ticket.copyWith(
+        clientId: userId,
+        createdAt: DateTime.now(),
+        attachmentUrls: [], // Start with empty list
+      );
+      
+      // Save the ticket to Firestore first
+      print('Saving ticket to Firestore...');
+      DocumentReference docRef = await _firestore.collection('tickets')
+          .add(initialTicket.toMap())
+          .timeout(const Duration(seconds: 8), 
+              onTimeout: () => throw Exception('Initial ticket save timed out'));
+      
+      print('Ticket created with ID: ${docRef.id}');
+      
+      // Now process attachments directly instead of in background
+      if (attachments != null && attachments.isNotEmpty) {
+        print('Processing ${attachments.length} attachments...');
+        try {
+          // Upload the files and wait for them to complete
+          final attachmentUrls = await _storageService.uploadFiles(attachments, userId)
+              .timeout(const Duration(seconds: 60), 
+                  onTimeout: () {
+                    print('Attachment upload timed out');
+                    return [];
+                  });
+          
+          if (attachmentUrls.isNotEmpty) {
+            // Update the ticket with attachment URLs
+            await _firestore.collection('tickets').doc(docRef.id).update({
+              'attachmentUrls': attachmentUrls,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+            
+            print('Ticket ${docRef.id} updated with ${attachmentUrls.length} attachments');
+          }
+        } catch (e) {
+          print('Error processing attachments: $e');
+          // Don't let attachment errors prevent ticket creation
+        }
+      }
+      
+      // Return the ID
+      return docRef.id;    } catch (e) {
       print('Error creating ticket: $e');
-      throw Exception('Failed to create ticket: $e');
+      throw Exception('Could not create ticket: ${e.toString().contains('Exception:') ? 
+          e.toString().split('Exception:').last.trim() : e}');
     }
   }
   

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/ticket_provider.dart';
-import 'admin_ticket_detail_screen.dart';
+import '../ticket_detail_screen.dart';
 import '../../models/ticket_model.dart';
 import '../../widgets/ticket_list_item.dart';
 
@@ -45,6 +45,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             onPressed: () async {
               _navigateToLogin();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            onPressed: () {
+              Navigator.pushNamed(context, '/tickets');
+            },
+            tooltip: 'View Tickets',
           ),
         ],
       ),
@@ -138,7 +145,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => AdminTicketDetailScreen(ticketId: ticket.id!),
+                                    builder: (context) => TicketDetailScreen(
+                                      ticketId: ticket.id!,
+                                      isAdmin: true,
+                                    ),
                                   ),
                                 );
                               },

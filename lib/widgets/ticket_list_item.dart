@@ -6,12 +6,14 @@ class TicketListItem extends StatelessWidget {
   final TicketModel ticket;
   final VoidCallback onTap;
   final bool showClientInfo;
+  final Function(String)? onStatusChange;
 
   const TicketListItem({
     Key? key,
     required this.ticket,
     required this.onTap,
     this.showClientInfo = false,
+    this.onStatusChange,
   }) : super(key: key);
 
   @override
@@ -136,35 +138,82 @@ class TicketListItem extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Status chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          statusIcon,
-                          size: 14,
-                          color: statusColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatStatus(ticket.status),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                  onStatusChange != null
+                      ? InkWell(
+                          onTap: () {
+                            _showStatusChangeDialog(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: statusColor.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  statusIcon,
+                                  size: 14,
+                                  color: statusColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatStatus(ticket.status),
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (onStatusChange != null) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 14,
+                                    color: statusColor,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                statusIcon,
+                                size: 14,
+                                color: statusColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatStatus(ticket.status),
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
                   // Date
                   Text(
                     DateFormat.yMMMd().format(ticket.createdAt),
@@ -211,5 +260,94 @@ class TicketListItem extends StatelessWidget {
       default:
         return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
+  }
+
+  // Show status change dialog
+  void _showStatusChangeDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Change Ticket Status'),
+        children: [
+          if (ticket.status != 'open')
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                onStatusChange?.call('open');
+              },
+              child: _buildStatusOption('open', 'New', Colors.blue, Icons.fiber_new),
+            ),
+          if (ticket.status != 'in_progress')
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                onStatusChange?.call('in_progress');
+              },
+              child: _buildStatusOption('in_progress', 'In Progress', Colors.orange, Icons.pending),
+            ),
+          if (ticket.status != 'resolved')
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                onStatusChange?.call('resolved');
+              },
+              child: _buildStatusOption('resolved', 'Resolved', Colors.green, Icons.check_circle),
+            ),
+          if (ticket.status != 'closed')
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+                onStatusChange?.call('closed');
+              },
+              child: _buildStatusOption('closed', 'Closed', Colors.grey, Icons.cancel),
+            ),
+          SimpleDialogOption(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build status option for dialog
+  Widget _buildStatusOption(String status, String label, Color color, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

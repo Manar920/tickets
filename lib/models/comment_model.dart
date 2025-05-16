@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class CommentModel {
   final String? id;
   final String ticketId;
@@ -33,7 +31,7 @@ class CommentModel {
       }
     }
     
-    // Handle createdAt timestamp (could be stored as milliseconds since epoch)
+    // Handle createdAt timestamp 
     DateTime createdAt;
     if (data['createdAt'] is Map) {
       // Handle Firestore Timestamp format if present
@@ -71,7 +69,7 @@ class CommentModel {
       'userEmail': userEmail,
       'userRole': userRole,
       'message': message,
-      'createdAt': createdAt.millisecondsSinceEpoch, // Store as milliseconds since epoch
+      'createdAt': createdAt.millisecondsSinceEpoch, 
       'attachmentUrls': attachmentUrls,
     };
   }

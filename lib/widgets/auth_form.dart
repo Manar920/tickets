@@ -4,13 +4,11 @@ import '../providers/auth_provider.dart';
 
 class AuthForm extends StatefulWidget {
   final bool isLogin;
-  final Future<void> Function(String email, String password, {String? name}) onSubmit;
+  final Future<void> Function(String email, String password, {String? name})
+  onSubmit;
 
-  const AuthForm({
-    Key? key,
-    required this.isLogin,
-    required this.onSubmit,
-  }) : super(key: key);
+  const AuthForm({Key? key, required this.isLogin, required this.onSubmit})
+    : super(key: key);
 
   @override
   State<AuthForm> createState() => _AuthFormState();
@@ -52,7 +50,7 @@ class _AuthFormState extends State<AuthForm> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final theme = Theme.of(context);
-    
+
     return Form(
       key: _formKey,
       child: Column(
@@ -98,7 +96,9 @@ class _AuthFormState extends State<AuthForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(
+                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+              ).hasMatch(value)) {
                 return 'Please enter a valid email';
               }
               return null;
@@ -151,58 +151,36 @@ class _AuthFormState extends State<AuthForm> {
                   borderRadius: BorderRadius.circular(30),
                 ),
               ),
-              child: authProvider.isLoading
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          widget.isLogin ? Icons.login : Icons.person_add,
-                          size: 20,
+              child:
+                  authProvider.isLoading
+                      ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          widget.isLogin ? 'Sign In' : 'Create Account',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
+                      )
+                      : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            widget.isLogin ? Icons.login : Icons.person_add,
+                            size: 20,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 8),
+                          Text(
+                            widget.isLogin ? 'Sign In' : 'Create Account',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
             ),
           ),
-          if (widget.isLogin) ...[
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  // TODO: Implement forgot password
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Forgot password functionality coming soon!'),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

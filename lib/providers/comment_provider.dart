@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/comment_model.dart';
 import '../services/comment_service.dart';
-import '../services/auth_service.dart';
+
 
 class CommentProvider with ChangeNotifier {
   final CommentService _commentService = CommentService();
-  final AuthService _authService = AuthService();
+  
   
   List<CommentModel> _comments = [];
   bool _isLoading = false;
@@ -28,11 +28,11 @@ class CommentProvider with ChangeNotifier {
     
     _currentTicketId = ticketId;
     
-    // Use Future.microtask to defer the loading until after the build is complete
+    
     Future.microtask(() => _loadComments());
   }
   
-  // Load comments for the current ticket
+  
   void _loadComments() {
     if (_disposed || _currentTicketId == null) return;
     
@@ -41,10 +41,10 @@ class CommentProvider with ChangeNotifier {
     notifyListeners();
     
     try {
-      // Start listening to comments for this ticket
+      
       _commentsStream = _commentService.getTicketComments(_currentTicketId!);
       
-      // Subscribe to changes
+      
       _commentsStream!.listen((commentsList) {
         if (!_disposed) {
           _comments = commentsList;
@@ -67,7 +67,7 @@ class CommentProvider with ChangeNotifier {
     }
   }
   
-  // Add a new comment
+  
   Future<String?> addComment(String message, List<File>? attachments) async {
     if (_disposed || _currentTicketId == null) return null;
     
@@ -76,16 +76,16 @@ class CommentProvider with ChangeNotifier {
     notifyListeners();
     
     try {
-      // Get current user
+      
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         throw Exception('User not authenticated');
       }
       
-      // Get user role
+      
       final userRole = await _commentService.getUserRole(user.uid);
       
-      // Create comment object
+      
       final comment = CommentModel(
         ticketId: _currentTicketId!,
         userId: user.uid,
@@ -95,7 +95,7 @@ class CommentProvider with ChangeNotifier {
         createdAt: DateTime.now(),
       );
       
-      // Add comment to Firestore
+      
       final commentId = await _commentService.addComment(comment, attachments);
       
       _isLoading = false;
@@ -112,7 +112,7 @@ class CommentProvider with ChangeNotifier {
     }
   }
   
-  // Delete a comment
+  
   Future<bool> deleteComment(String commentId) async {
     if (_disposed) return false;
     
@@ -142,7 +142,7 @@ class CommentProvider with ChangeNotifier {
     }
   }
   
-  // Clear error
+  
   void clearError() {
     if (_disposed) return;
     

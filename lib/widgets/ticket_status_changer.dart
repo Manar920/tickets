@@ -14,7 +14,6 @@ class TicketStatusChanger extends StatelessWidget {
     this.showActions = true,
     this.onStatusChanged,
   }) : super(key: key);
-
   // Get status color
   Color _getStatusColor(String status) {
     switch (status) {
@@ -22,6 +21,10 @@ class TicketStatusChanger extends StatelessWidget {
         return Colors.blue;
       case 'in_progress':
         return Colors.orange;
+      case 'waiting_on_client':
+        return Colors.purple;
+      case 'pending_review':
+        return Colors.amber;
       case 'resolved':
         return Colors.green;
       case 'closed':
@@ -38,6 +41,10 @@ class TicketStatusChanger extends StatelessWidget {
         return Icons.fiber_new;
       case 'in_progress':
         return Icons.pending;
+      case 'waiting_on_client':
+        return Icons.hourglass_empty;
+      case 'pending_review':
+        return Icons.rate_review;
       case 'resolved':
         return Icons.check_circle;
       case 'closed':
@@ -46,7 +53,6 @@ class TicketStatusChanger extends StatelessWidget {
         return Icons.fiber_new;
     }
   }
-
   // Format status text
   String _formatStatus(String status) {
     switch (status) {
@@ -54,6 +60,10 @@ class TicketStatusChanger extends StatelessWidget {
         return 'In Progress';
       case 'open':
         return 'New';
+      case 'waiting_on_client':
+        return 'Waiting on Client';
+      case 'pending_review':
+        return 'Pending Review';
       default:
         return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
@@ -188,8 +198,7 @@ class TicketStatusChanger extends StatelessWidget {
                     labelStyle: TextStyle(color: _getStatusColor('open')),
                     onPressed: () => _updateTicketStatus(context, 'open'),
                   ),
-                ),
-              if (ticket.status != 'in_progress')
+                ),              if (ticket.status != 'in_progress')
                 Tooltip(
                   message: 'Mark ticket as being worked on',
                   child: ActionChip(
@@ -198,6 +207,28 @@ class TicketStatusChanger extends StatelessWidget {
                     backgroundColor: _getStatusColor('in_progress').withOpacity(0.1),
                     labelStyle: TextStyle(color: _getStatusColor('in_progress')),
                     onPressed: () => _updateTicketStatus(context, 'in_progress'),
+                  ),
+                ),
+              if (ticket.status != 'waiting_on_client')
+                Tooltip(
+                  message: 'Waiting for client response',
+                  child: ActionChip(
+                    avatar: Icon(Icons.hourglass_empty, color: _getStatusColor('waiting_on_client')),
+                    label: const Text('Waiting on Client'),
+                    backgroundColor: _getStatusColor('waiting_on_client').withOpacity(0.1),
+                    labelStyle: TextStyle(color: _getStatusColor('waiting_on_client')),
+                    onPressed: () => _updateTicketStatus(context, 'waiting_on_client'),
+                  ),
+                ),
+              if (ticket.status != 'pending_review')
+                Tooltip(
+                  message: 'Pending manager review',
+                  child: ActionChip(
+                    avatar: Icon(Icons.rate_review, color: _getStatusColor('pending_review')),
+                    label: const Text('Pending Review'),
+                    backgroundColor: _getStatusColor('pending_review').withOpacity(0.1),
+                    labelStyle: TextStyle(color: _getStatusColor('pending_review')),
+                    onPressed: () => _updateTicketStatus(context, 'pending_review'),
                   ),
                 ),
               if (ticket.status != 'resolved')

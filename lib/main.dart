@@ -104,7 +104,7 @@ class MyApp extends StatelessWidget {
                     routes: {
                       '/login': (context) => const LoginScreen(),
                       '/client_home': (context) => const ClientHomeScreen(),
-                      '/admin_home': (context) => const AdminHomeScreen(),
+                      // '/admin_home': (context) => const AdminHomeScreen(),
                       '/admin_dashboard': (context) => const AdminDashboardScreen(),
                       '/tickets': (context) => const TicketListScreen(),
                       '/create-ticket': (context) => const CreateTicketScreen(),
@@ -166,7 +166,7 @@ class MyApp extends StatelessWidget {
                   routes: {
                     '/login': (context) => const LoginScreen(),
                     '/client_home': (context) => const ClientHomeScreen(),
-                    '/admin_home': (context) => const AdminHomeScreen(),
+                    // '/admin_home': (context) => const AdminHomeScreen(),
                     '/admin_dashboard': (context) => const AdminDashboardScreen(),
                     '/tickets': (context) => const TicketListScreen(),
                     '/create-ticket': (context) => const CreateTicketScreen(),

@@ -10,7 +10,7 @@ class TicketModel {
   final String? assignedToId;
   final DateTime createdAt;
   final DateTime? updatedAt;
-  final List<String> attachmentUrls; // Add this field
+  final List<String> attachmentUrls; 
 
   TicketModel({
     this.id,
@@ -27,14 +27,14 @@ class TicketModel {
 
   // Create from Firestore map
   factory TicketModel.fromMap(Map<String, dynamic> data, String documentId) {
-    // Check if attachmentUrls is present and correctly parsed
+    
     List<String> attachments = [];
     if (data['attachmentUrls'] != null) {
-      // Handle both array and list formats
+      
       if (data['attachmentUrls'] is List) {
         attachments = List<String>.from(data['attachmentUrls']);
       } else if (data['attachmentUrls'] is String) {
-        // If somehow stored as a single string
+        
         attachments = [data['attachmentUrls']];
       }
     }

@@ -22,7 +22,7 @@ class AuthProvider with ChangeNotifier {
   bool get isClient => _role == 'client';
 
   AuthProvider() {
-    // Initialize the provider by listening to auth changes
+    
     _authService.user.listen((UserModel? user) async {
       _user = user;
       if (user != null) {
@@ -33,25 +33,25 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     });
     
-    // Initialize current user on startup
+    
     _initCurrentUser();
   }
   
-  // Improved sign in with better error handling and prevention of auto-logout
+  
   Future<bool> signIn(String email, String password) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     
-    // Store current auth state to detect changes
-    final wasAuthenticated = _user != null;
+    
+   
 
     try {
-      // Only log success/failure without the full error message
+      
       final success = await _authService.signInWithEmailAndPassword(email, password);
       
       if (success) {
-        // Safely get user info after sign-in
+        
         await Future.delayed(const Duration(milliseconds: 500));
         _user = await _authService.getCurrentUser();
         
@@ -70,9 +70,9 @@ class AuthProvider with ChangeNotifier {
       return success && _user != null;
     } catch (e) {
       _isLoading = false;
-      // Ignore PigeonUserDetails errors completely
+      
       if (e.toString().contains('PigeonUserDetails')) {
-        // If we get this error, check if we're actually signed in
+       
         final signedIn = _authService.currentUser != null;
         
         if (!signedIn) {
@@ -89,7 +89,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
   
-  // Initialize the current user on startup - with logging
+  
   Future<void> _initCurrentUser() async {
     try {
       final UserModel? previousUser = _user;
@@ -108,15 +108,15 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Register with email and password with better error handling
+
   Future<bool> register(String email, String password, {String name = ''}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
     try {
-      // Register user with email and password
+
       final success = await _authService.registerWithEmailAndPassword(email, password, name: name);
-      // The AuthService should handle creating the Firestore user document and setting displayName
+
       _isLoading = false;
       notifyListeners();
       return success;
@@ -131,12 +131,12 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Sign out - prevent accidental sign-outs
+  
   Future<void> signOut() async {
     try {
       print('Explicitly signing out user: ${_user?.email}');
       
-      // Set state variables to null AFTER Firebase sign-out
+      
       await _authService.signOut();
       
       _user = null;
@@ -148,16 +148,16 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // Clear any errors
+  
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
-  // Handle Firebase Auth specific errors
+ 
   void _handleAuthError(FirebaseAuthException e) {
     _isLoading = false;
-    // Handle specific Firebase Auth error messages
+    
     switch (e.code) {
       case 'user-not-found':
         _error = 'No user found with this email.';

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+
 import '../../providers/ticket_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/ticket_model.dart';
@@ -99,7 +99,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     }
   }
   
-  // Build stats widgets
+  
   Widget _buildStatsWidget(TicketProvider ticketProvider) {
     final tickets = ticketProvider.tickets;
     
@@ -648,13 +648,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Statistics tab
+          
           _buildStatsWidget(ticketProvider),
           
-          // Tickets list tab
+          
           _buildTicketsListView(ticketProvider),
           
-          // User management tab
+          
           _buildUserManagement(),
         ],
       ),

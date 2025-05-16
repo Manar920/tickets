@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../services/role_service.dart';
 import '../models/ticket_model.dart';
 import '../widgets/ticket_list_item.dart';
+import '../widgets/admin_ticket_overview.dart';
 import 'ticket_detail_screen.dart';
 
 class TicketListScreen extends StatefulWidget {
@@ -120,9 +121,18 @@ class _TicketListScreenState extends State<TicketListScreen> {
             },
           ),
         ],
-      ),
-      body: Column(
-        children: [
+      ),      body: Column(
+        children: [          // Show Admin Dashboard for admin users
+          if (_isAdmin)
+            AdminTicketOverview(
+              tickets: ticketProvider.tickets,
+              onStatusFilterSelected: (status) {
+                setState(() {
+                  _selectedStatusFilter = status;
+                });
+              },
+            ),
+            
           // Status filter chips
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -133,8 +143,11 @@ class _TicketListScreenState extends State<TicketListScreen> {
                   _buildFilterChip('all', 'All'),
                   const SizedBox(width: 8),
                   _buildFilterChip('open', 'New', Colors.blue),
+                  const SizedBox(width: 8),                  _buildFilterChip('in_progress', 'In Progress', Colors.orange),
                   const SizedBox(width: 8),
-                  _buildFilterChip('in_progress', 'In Progress', Colors.orange),
+                  _buildFilterChip('waiting_on_client', 'Waiting on Client', Colors.purple),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('pending_review', 'Pending Review', Colors.amber),
                   const SizedBox(width: 8),
                   _buildFilterChip('resolved', 'Resolved', Colors.green),
                   const SizedBox(width: 8),
@@ -167,24 +180,27 @@ class _TicketListScreenState extends State<TicketListScreen> {
             ),
           ),
           
-          // Status summary card
-          Card(
-            elevation: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatusCount('New', ticketProvider.tickets.where((t) => t.status == 'open').length, Colors.blue),
-                  _buildStatusCount('In Progress', ticketProvider.tickets.where((t) => t.status == 'in_progress').length, Colors.orange),
-                  _buildStatusCount('Resolved', ticketProvider.tickets.where((t) => t.status == 'resolved').length, Colors.green),
-                  _buildStatusCount('Closed', ticketProvider.tickets.where((t) => t.status == 'closed').length, Colors.grey),
-                ],
+          // Status summary card - only show for non-admin users
+          if (!_isAdmin)
+            Card(
+              elevation: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatusCount('New', ticketProvider.tickets.where((t) => t.status == 'open').length, Colors.blue),
+                    _buildStatusCount('In Progress', ticketProvider.tickets.where((t) => t.status == 'in_progress').length, Colors.orange),
+                    _buildStatusCount('Waiting', ticketProvider.tickets.where((t) => t.status == 'waiting_on_client').length, Colors.purple),
+                    _buildStatusCount('Review', ticketProvider.tickets.where((t) => t.status == 'pending_review').length, Colors.amber),
+                    _buildStatusCount('Resolved', ticketProvider.tickets.where((t) => t.status == 'resolved').length, Colors.green),
+                    _buildStatusCount('Closed', ticketProvider.tickets.where((t) => t.status == 'closed').length, Colors.grey),
+                  ],
+                ),
               ),
             ),
-          ),
           
           // Advanced filtering options
           Padding(
@@ -420,13 +436,16 @@ class _TicketListScreenState extends State<TicketListScreen> {
       ],
     );
   }
-
   String _formatFilterName(String filter) {
     switch (filter) {
       case 'in_progress':
         return 'in progress';
       case 'open':
         return 'new';
+      case 'waiting_on_client':
+        return 'waiting on client';
+      case 'pending_review':
+        return 'pending review';
       default:
         return filter;
     }
@@ -446,14 +465,15 @@ class _TicketListScreenState extends State<TicketListScreen> {
       default: return 0;
     }
   }
-  
-  // Helper function to convert status to numeric value for sorting
+    // Helper function to convert status to numeric value for sorting
   int _getStatusValue(String status) {
     switch (status) {
       case 'open': return 0;
       case 'in_progress': return 1;
-      case 'resolved': return 2;
-      case 'closed': return 3;
+      case 'waiting_on_client': return 2;
+      case 'pending_review': return 3;
+      case 'resolved': return 4;
+      case 'closed': return 5;
       default: return 0;
     }
   }

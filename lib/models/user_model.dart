@@ -13,7 +13,7 @@ class UserModel {
     this.photoURL,
   });
 
-  // Create a UserModel from a Firebase user and additional data
+  
   factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
     return UserModel(
       uid: uid,
@@ -24,7 +24,7 @@ class UserModel {
     );
   }
 
-  // Convert to a map for Firestore
+  
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
@@ -35,7 +35,7 @@ class UserModel {
     };
   }
 
-  // Create a copy with some fields replaced
+  
   UserModel copyWith({
     String? uid,
     String? email,
